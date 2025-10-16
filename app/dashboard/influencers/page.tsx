@@ -205,21 +205,12 @@ export default function InfluencersPage() {
             <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
               <Filter className="w-4 h-4 mr-2" />
               {showFilters ? 'Gizle' : 'Göster'}
-            </Button>
-          </div>
-        </CardHeader>
-        {showFilters && (
-          <CardContent className="space-y-6">
-            <div>
-              <label className="text-sm font-medium mb-2 block flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                Konum
-              </label>
-              <Select value={filters.location} onValueChange={(v) => setFilters({...filters, location: v})}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Tüm konumlar" />
-                </SelectTrigger>
-                <SelectContent>
+              <Input
+                placeholder="Örn: Istanbul, New York, Dubai"
+                value={filters.location}
+                onChange={(e) => setFilters({...filters, location: e.target.value})}
+              />
+              <p className="text-xs text-slate-500 mt-1">💡 Bio veya profilde bu konum geçen influencer'lar bulunur</p>
                   <SelectItem value="">Tüm konumlar</SelectItem>
                   {locations.map(loc => (
                     <SelectItem key={loc} value={loc}>{loc}</SelectItem>
