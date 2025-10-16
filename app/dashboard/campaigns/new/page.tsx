@@ -68,14 +68,36 @@ export default function NewCampaignPage() {
 
   const handleSubmit = async () => {
     try {
-      await createCampaign({
-        ...formData,
+      // Backend'in beklediği formata çevir
+      const campaignData: any = {
+        client_id: formData.client_id,
+        name: formData.name,
         campaign_type: formData.campaign_type,
+        sector: formData.sector,
         budget: parseFloat(formData.budget),
-        start_date: `${formData.start_date}T00:00:00`,
-        end_date: `${formData.end_date}T00:00:00`,
-        status: 'planning'
-      });
+        start_date: formData.start_date ? `${formData.start_date}T00:00:00` : null,
+        end_date: formData.end_date ? `${formData.end_date}T00:00:00` : null,
+      };
+
+      // Objectives yapısını oluştur
+      if (formData.campaign_type === 'awareness') {
+        campaignData.objectives = {
+          marka_bilinirlik: formData.goals,
+          sosyal_medya_hesap: [],
+          sosyal_medya_gonderi: [],
+          lokasyon_bilinirlik: [],
+          urun_bilinirlik: []
+        };
+      } else {
+        campaignData.objectives = {};
+        campaignData.sales_goals = {
+          satis_hedefi: formData.sales_goal,
+          alt_satis_hedefi: null,
+          onemli_metrikler: []
+        };
+      }
+
+      await createCampaign(campaignData);
       router.push('/dashboard/campaigns');
     } catch (error) {
       console.error('Kampanya oluşturma hatası:', error);
