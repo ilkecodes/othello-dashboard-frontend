@@ -43,7 +43,7 @@ export default function InfluencersPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Influencer Ara</h1>
-        <p className="text-slate-600">Instagram influencer'larını bul ve analiz et</p>
+        <p className="text-slate-600">Instagram influencerlarını bul ve analiz et</p>
       </div>
 
       <Card>
