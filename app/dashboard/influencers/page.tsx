@@ -38,15 +38,6 @@ export default function InfluencersPage() {
     { value: 'ev', label: '🏡 Ev & Dekorasyon' },
   ];
 
-  const locations = [
-    'Türkiye',
-    'İstanbul',
-    'Ankara',
-    'İzmir',
-    'Bursa',
-    'Antalya',
-  ];
-
   const followerRanges = [
     { label: 'Nano (1K-10K)', min: 1000, max: 10000 },
     { label: 'Mikro (10K-50K)', min: 10000, max: 50000 },
@@ -205,19 +196,22 @@ export default function InfluencersPage() {
             <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
               <Filter className="w-4 h-4 mr-2" />
               {showFilters ? 'Gizle' : 'Göster'}
+            </Button>
+          </div>
+        </CardHeader>
+        {showFilters && (
+          <CardContent className="space-y-6">
+            <div>
+              <label className="text-sm font-medium mb-2 block flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                Konum
+              </label>
               <Input
                 placeholder="Örn: Istanbul, New York, Dubai"
                 value={filters.location}
                 onChange={(e) => setFilters({...filters, location: e.target.value})}
               />
               <p className="text-xs text-slate-500 mt-1">💡 Bio veya profilde bu konum geçen influencer'lar bulunur</p>
-                  <SelectItem value="">Tüm konumlar</SelectItem>
-                  {locations.map(loc => (
-                    <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-slate-500 mt-1">Not: Bio'da bu konum geçen profiller bulunur</p>
             </div>
 
             <div>
