@@ -1,17 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { createCampaign } from '@/lib/api';
+import { createCampaign, getClients } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 
 export default function NewCampaignPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
+  const [clients, setClients] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     client_id: '',
@@ -24,6 +25,10 @@ export default function NewCampaignPage() {
     sales_goal: '',
     awareness_goal: '',
   });
+
+  useEffect(() => {
+    getClients().then(res => setClients(res.data)).catch(console.error);
+  }, []);
 
   const sectors = [
     'Gıda ve İçecek',
@@ -58,17 +63,11 @@ export default function NewCampaignPage() {
     'Kiralama Satışı'
   ];
 
-  const altSalesGoals = {
-    'Perakende Satış': ['Fiziksel Mağaza Satışı', 'Pop-up Mağaza Satışı', 'Konsiye Satış'],
-    'Online Satış': ['E-ticaret Sitesi', 'Sosyal Medya Satışı', 'Mobil Uygulama'],
-  };
-
   const handleNext = () => setStep(step + 1);
   const handleBack = () => setStep(step - 1);
 
   const handleSubmit = async () => {
     try {
-      // Backend'in beklediği formata çevir
       const campaignData: any = {
         client_id: formData.client_id,
         name: formData.name,
@@ -79,7 +78,6 @@ export default function NewCampaignPage() {
         end_date: formData.end_date ? `${formData.end_date}T00:00:00` : null,
       };
 
-      // Objectives yapısını oluştur
       if (formData.campaign_type === 'awareness') {
         campaignData.objectives = {
           marka_bilinirlik: formData.goals,
@@ -113,6 +111,8 @@ export default function NewCampaignPage() {
     }));
   };
 
+  const selectedClient = clients.find(c => c.id === formData.client_id);
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
@@ -134,20 +134,37 @@ export default function NewCampaignPage() {
       {step === 1 && (
         <Card>
           <CardHeader>
-            <CardTitle>Kampanya Sektörü Seçiniz</CardTitle>
+            <CardTitle>Müşteri Seçin</CardTitle>
+            <CardDescription>Bu kampanya hangi müşteri için?</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Select value={formData.sector} onValueChange={(v) => setFormData({...formData, sector: v})}>
+            <Select value={formData.client_id} onValueChange={(v) => {
+              const client = clients.find(c => c.id === v);
+              setFormData({
+                ...formData, 
+                client_id: v,
+                sector: client?.brand_guidelines?.industry || ''
+              });
+            }}>
               <SelectTrigger>
-                <SelectValue placeholder="Sektör seçin" />
+                <SelectValue placeholder="Müşteri seçin" />
               </SelectTrigger>
               <SelectContent>
-                {sectors.map(s => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                {clients.map(client => (
+                  <SelectItem key={client.id} value={client.id}>
+                    {client.name} • {client.brand_guidelines?.industry || 'Sektör belirtilmemiş'}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Button onClick={handleNext} disabled={!formData.sector}>Devam Et</Button>
+            {selectedClient && (
+              <div className="p-4 bg-slate-50 rounded-lg">
+                <p className="text-sm"><strong>Müşteri:</strong> {selectedClient.name}</p>
+                <p className="text-sm"><strong>Sektör:</strong> {selectedClient.brand_guidelines?.industry}</p>
+                <p className="text-sm"><strong>Keywords:</strong> {selectedClient.keywords?.keywords?.join(', ') || 'Yok'}</p>
+              </div>
+            )}
+            <Button onClick={handleNext} disabled={!formData.client_id}>Devam Et</Button>
           </CardContent>
         </Card>
       )}
@@ -243,14 +260,6 @@ export default function NewCampaignPage() {
                 placeholder="Örn: Kış Sezonu Kampanyası"
               />
             </div>
-            <div>
-              <label className="text-sm font-medium">Müşteri ID</label>
-              <Input
-                value={formData.client_id}
-                onChange={(e) => setFormData({...formData, client_id: e.target.value})}
-                placeholder="Müşteri ID"
-              />
-            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium">Başlangıç</label>
@@ -293,6 +302,7 @@ export default function NewCampaignPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
+              <p><strong>Müşteri:</strong> {selectedClient?.name}</p>
               <p><strong>Kampanya Adı:</strong> {formData.name}</p>
               <p><strong>Sektör:</strong> {formData.sector}</p>
               <p><strong>Hedef:</strong> <Badge>{formData.campaign_type === 'awareness' ? 'Bilinirlik' : 'Satış'}</Badge></p>
