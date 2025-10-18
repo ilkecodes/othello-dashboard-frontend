@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, Building2 } from 'lucide-react';
 
-const API = 'https://othello-backend-production-2ff4.up.railway.app/api/clients';
+const API = '/api/clients';
 
 const industries = [
   'Healthcare', 'Restaurant', 'Food & Beverage', 'Fashion',
@@ -111,7 +111,7 @@ export default function ClientsPage() {
   const handleDelete = async (id: Client['id'], name: string) => {
     if (!confirm(`"${name}" silinsin mi?`)) return;
     try {
-      const res = await fetch(`${API}/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API}?id=${id}`, { method: 'DELETE' });
       if (!res.ok) {
         const text = await res.text().catch(() => '');
         throw new Error(`Silinemedi: ${res.status} ${text}`);
