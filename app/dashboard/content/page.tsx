@@ -72,7 +72,7 @@ export default function ContentPage() {
     getClients().then(res => setClients(res.data)).catch(console.error);
   }, []);
 
-  const selectedClient = clients.find(c => c.id === clientId);
+  const selectedClient = clients.find((c: any) => String(c.id) === String(clientId));
   const selectedGoal = contentGoals.find(g => g.value === goal);
 
   const handleGenerate = async () => {
@@ -121,7 +121,7 @@ export default function ContentPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {clients.map(client => (
-                    <SelectItem key={client.id} value={client.id}>
+                    <SelectItem key={String(client.id)} value={String(client.id)}>
                       {client.name}
                     </SelectItem>
                   ))}
@@ -131,7 +131,7 @@ export default function ContentPage() {
                 <div className="mt-2 p-3 bg-slate-50 rounded-lg">
                   <p className="text-sm font-medium">{selectedClient.brand_guidelines?.industry}</p>
                   <p className="text-xs text-slate-600 mt-1">
-                    {selectedClient.brand_guidelines?.brand_voice}
+                    {typeof selectedClient.brand_guidelines?.brand_voice === "string" ? selectedClient.brand_guidelines.brand_voice : ""}
                   </p>
                 </div>
               )}
