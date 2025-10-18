@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 
 const API_BASE = process.env.API_BASE || 'https://othello-backend-production-2ff4.up.railway.app';
 
+export async function GET() {
+  return NextResponse.json({ ok: true, note: 'use POST' }, { status: 200 });
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -15,7 +19,10 @@ export async function POST(req: Request) {
     let json: any = {};
     try { json = JSON.parse(text); } catch { json = { raw: text }; }
     return NextResponse.json(json, { status: r.status });
-  } catch (error) {
-    return NextResponse.json({ error: 'Search failed' }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: 'Search failed', detail: String(error?.message || error) },
+      { status: 500 }
+    );
   }
 }
