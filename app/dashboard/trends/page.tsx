@@ -41,7 +41,7 @@ export default function TrendsPage() {
 
     setLoading(true);
     try {
-      const res = await fetch(API + '/api/trends/scan', {
+      const res = await fetch('/api/trends/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -68,7 +68,7 @@ export default function TrendsPage() {
 
     setLoading(true);
     try {
-      const res = await fetch(API + '/api/trends/scan', {
+      const res = await fetch('/api/trends/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
