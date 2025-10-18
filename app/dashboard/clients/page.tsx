@@ -1,63 +1,64 @@
 'use client';
+
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getClients, createClient, deleteClient, updateClient } from '@/lib/api';
-import { Plus, Trash2, Users, Building2, Target, MessageSquare, Edit, ExternalLink } from 'lucide-react';
+import { Plus, Trash2, Building2 } from 'lucide-react';
+
+const API = 'https://othello-backend-production-2ff4.up.railway.app/api/clients';
 
 const industries = [
-  'Healthcare', 'Restaurant', 'Food & Beverage', 'Food', 'Entertainment',
-  'Digital Marketing', 'E-commerce', 'Real Estate', 'Technology', 'Fashion',
-  'Beauty', 'Education', 'Finance', 'Travel', 'Sports', 'Desserts', 'Interior Design'
+  'Healthcare', 'Restaurant', 'Food & Beverage', 'Fashion',
+  'Beauty', 'Technology', 'Entertainment', 'E-commerce'
 ];
 
-const platforms = [
-  { value: 'instagram', label: '📷 Instagram' },
-  { value: 'facebook', label: '📘 Facebook' },
-  { value: 'tiktok', label: '🎵 TikTok' },
-  { value: 'linkedin', label: '💼 LinkedIn' },
-  { value: 'youtube', label: '📹 YouTube' },
-  { value: 'twitter', label: '🐦 Twitter' }
-];
+type Client = {
+  id: string | number;
+  name: string;
+  industry?: string;
+  target_audience?: string;
+  brand_guidelines?: {
+    industry?: string;
+    target_audience?: string;
+  };
+  // keywords API’den string[] ya da { keywords: string[] } gelebilir
+  keywords?: string[] | { keywords?: string[] };
+  instagram_username?: string | null;
+  social_links?: { instagram?: string };
+};
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState<any>(null);
-  
-  // Create form state
-  const [name, setName] = useState('');
-  const [industry, setIndustry] = useState('');
-  const [description, setDescription] = useState('');
-  const [targetAudience, setTargetAudience] = useState('');
-  const [brandVoice, setBrandVoice] = useState('');
-  const [keywords, setKeywords] = useState('');
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
-  
-  // Edit form state
-  const [editInstagramUrl, setEditInstagramUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    name: '',
+    industry: '',
+    description: '',
+    target_audience: '',
+    keywords: '',
+    instagram_username: ''
+  });
 
   useEffect(() => {
     loadClients();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadClients = async () => {
     try {
-      setLoading(true);
-      const response = await getClients();
-      setClients(response.data || []);
-    } catch (error) {
-      console.error('Müşteriler yüklenemedi:', error);
-    } finally {
-      setLoading(false);
+      const res = await fetch(API, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`Liste yüklenemedi: ${res.status}`);
+      const data = await res.json();
+      setClients(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error('Yükleme hatası:', e);
     }
   };
 
@@ -66,83 +67,79 @@ export default function ClientsPage() {
     setLoading(true);
 
     try {
-      const clientData = {
-        name,
-        industry,
-        description,
-        target_audience: targetAudience,
-        brand_voice: brandVoice,
-        keywords: keywords.split(',').map(k => k.trim()).filter(Boolean),
-        social_platforms: selectedPlatforms,
-      };
+      const response = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          industry: formData.industry,
+          description: formData.description || null,
+          target_audience: formData.target_audience || null,
+          keywords: formData.keywords
+            .split(',')
+            .map(k => k.trim())
+            .filter(Boolean),
+          social_platforms: ['instagram'],
+          instagram_username: formData.instagram_username?.trim() || null
+        })
+      });
 
-      await createClient(clientData);
-      
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        alert('Hata: ' + response.status + (text ? `\n${text}` : ''));
+        return;
+      }
+
+      // reset + kapanış + liste tazele
+      setFormData({
+        name: '',
+        industry: '',
+        description: '',
+        target_audience: '',
+        keywords: '',
+        instagram_username: ''
+      });
       setDialogOpen(false);
-      resetForm();
-      loadClients();
-      
-      alert('Müşteri başarıyla eklendi!');
-    } catch (error: any) {
-      console.error('Müşteri eklenemedi:', error);
-      alert('Müşteri eklenemedi: ' + (error.response?.data?.detail || error.message));
+      await loadClients();
+    } catch (e: any) {
+      alert('Eklenemedi: ' + e.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (clientId: string, clientName: string) => {
-    if (!confirm(`${clientName} müşterisini silmek istediğinize emin misiniz?`)) return;
-
+  const handleDelete = async (id: Client['id'], name: string) => {
+    if (!confirm(`"${name}" silinsin mi?`)) return;
     try {
-      await deleteClient(clientId);
-      loadClients();
-      alert('Müşteri silindi');
-    } catch (error) {
-      console.error('Silme hatası:', error);
-      alert('Müşteri silinemedi');
+      const res = await fetch(`${API}/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Silinemedi: ${res.status} ${text}`);
+      }
+      await loadClients();
+    } catch (e: any) {
+      alert('Silinemedi: ' + e.message);
     }
   };
 
-  const handleEdit = (client: any) => {
-    setEditingClient(client);
-    setEditInstagramUrl(client.instagram_url || '');
-    setEditDialogOpen(true);
+  // Yardımcı: keywords normalizasyonu
+  const getKeywords = (c: Client): string[] => {
+    if (Array.isArray(c.keywords)) return c.keywords;
+    if (c.keywords && Array.isArray(c.keywords.keywords)) return c.keywords.keywords;
+    return [];
   };
 
-  const handleUpdate = async () => {
-    if (!editingClient) return;
+  // Yardımcı: industry/target_audience fallback
+  const getIndustry = (c: Client) => c.industry || c.brand_guidelines?.industry || '';
+  const getAudience = (c: Client) => c.target_audience || c.brand_guidelines?.target_audience || '';
 
-    try {
-      await updateClient(editingClient.id, { 
-        instagram_url: editInstagramUrl 
-      });
-      setEditDialogOpen(false);
-      setEditingClient(null);
-      loadClients();
-      alert('Müşteri güncellendi!');
-    } catch (error) {
-      console.error('Güncelleme hatası:', error);
-      alert('Müşteri güncellenemedi');
-    }
-  };
-
-  const resetForm = () => {
-    setName('');
-    setIndustry('');
-    setDescription('');
-    setTargetAudience('');
-    setBrandVoice('');
-    setKeywords('');
-    setSelectedPlatforms([]);
-  };
-
-  const togglePlatform = (platform: string) => {
-    setSelectedPlatforms(prev =>
-      prev.includes(platform)
-        ? prev.filter(p => p !== platform)
-        : [...prev, platform]
-    );
+  // Yardımcı: instagram URL
+  const getInstagramUrl = (c: Client) => {
+    const fromLinks = c.social_links?.instagram;
+    const fromUsername = c.instagram_username
+      ? `https://instagram.com/${c.instagram_username.replace(/^@/, '')}`
+      : undefined;
+    return fromLinks || fromUsername;
   };
 
   return (
@@ -150,241 +147,183 @@ export default function ClientsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Müşteriler</h1>
-          <p className="text-slate-600">Müşterilerinizi yönetin ve analiz edin</p>
+          <p className="text-slate-600">Müşteri portföyünüzü yönetin</p>
         </div>
-        
+
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="lg">
+            <Button>
               <Plus className="mr-2 h-4 w-4" />
               Yeni Müşteri
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Yeni Müşteri Ekle</DialogTitle>
-              <DialogDescription>
-                Yeni bir müşteri profili oluşturun
-              </DialogDescription>
             </DialogHeader>
-            
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="name">Müşteri Adı *</Label>
+                <Label htmlFor="client-name">Müşteri Adı *</Label>
                 <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Örn: Acme Corp"
+                  id="client-name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Örn: Test Markası"
                   required
                 />
               </div>
 
               <div>
-                <Label htmlFor="industry">Sektör</Label>
-                <Select value={industry} onValueChange={setIndustry}>
-                  <SelectTrigger>
+                <Label htmlFor="client-industry">Sektör *</Label>
+                {/* shadcn Select required’ı native olarak desteklemez, submit butonunu disable ediyoruz */}
+                <Select
+                  value={formData.industry}
+                  onValueChange={(v) => setFormData({ ...formData, industry: v })}
+                >
+                  <SelectTrigger id="client-industry">
                     <SelectValue placeholder="Sektör seçin" />
                   </SelectTrigger>
                   <SelectContent>
-                    {industries.map(ind => (
-                      <SelectItem key={ind} value={ind}>{ind}</SelectItem>
+                    {industries.map((ind) => (
+                      <SelectItem key={ind} value={ind}>
+                        {ind}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <Label htmlFor="description">Açıklama</Label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Müşteri hakkında kısa açıklama"
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="targetAudience">Hedef Kitle</Label>
+                <Label htmlFor="client-audience">Hedef Kitle</Label>
                 <Input
-                  id="targetAudience"
-                  value={targetAudience}
-                  onChange={(e) => setTargetAudience(e.target.value)}
-                  placeholder="Örn: 25-35 yaş arası kadınlar"
+                  id="client-audience"
+                  value={formData.target_audience}
+                  onChange={(e) =>
+                    setFormData({ ...formData, target_audience: e.target.value })
+                  }
+                  placeholder="Örn: 25-45 yaş kadınlar"
                 />
               </div>
 
               <div>
-                <Label htmlFor="brandVoice">Marka Sesi</Label>
+                <Label htmlFor="client-keywords">Anahtar Kelimeler (virgülle ayırın)</Label>
                 <Input
-                  id="brandVoice"
-                  value={brandVoice}
-                  onChange={(e) => setBrandVoice(e.target.value)}
-                  placeholder="Örn: Samimi, profesyonel, eğlenceli"
+                  id="client-keywords"
+                  value={formData.keywords}
+                  onChange={(e) => setFormData({ ...formData, keywords: e.target.value })}
+                  placeholder="health, wellness, fitness"
                 />
               </div>
 
               <div>
-                <Label htmlFor="keywords">Anahtar Kelimeler (virgülle ayırın)</Label>
+                <Label htmlFor="client-ig">Instagram Kullanıcı Adı (opsiyonel)</Label>
                 <Input
-                  id="keywords"
-                  value={keywords}
-                  onChange={(e) => setKeywords(e.target.value)}
-                  placeholder="moda, stil, trend"
+                  id="client-ig"
+                  value={formData.instagram_username}
+                  onChange={(e) =>
+                    setFormData({ ...formData, instagram_username: e.target.value })
+                  }
+                  placeholder="@kullaniciadi"
                 />
+                <p className="text-xs text-slate-500 mt-1">Brand voice öğrenmek için</p>
               </div>
 
-              <div>
-                <Label>Sosyal Medya Platformları</Label>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {platforms.map(platform => (
-                    <Button
-                      key={platform.value}
-                      type="button"
-                      variant={selectedPlatforms.includes(platform.value) ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => togglePlatform(platform.value)}
-                    >
-                      {platform.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDialogOpen(false)}
+                >
                   İptal
                 </Button>
-                <Button type="submit" disabled={loading}>
+                <Button
+                  type="submit"
+                  disabled={loading || !formData.name || !formData.industry}
+                >
                   {loading ? 'Ekleniyor...' : 'Müşteri Ekle'}
                 </Button>
-              </DialogFooter>
+              </div>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Müşteri Düzenle</DialogTitle>
-            <DialogDescription>
-              {editingClient?.name} müşterisini düzenleyin
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="edit-instagram">Instagram URL</Label>
-              <Input
-                id="edit-instagram"
-                value={editInstagramUrl}
-                onChange={(e) => setEditInstagramUrl(e.target.value)}
-                placeholder="https://instagram.com/..."
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              İptal
-            </Button>
-            <Button onClick={handleUpdate}>
-              Güncelle
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {loading && !clients.length ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-slate-600">Müşteriler yükleniyor...</p>
-        </div>
-      ) : clients.length === 0 ? (
+      {clients.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <Users className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Henüz müşteri yok</h3>
-            <p className="text-slate-600 mb-4">İlk müşterinizi ekleyerek başlayın</p>
-            <Button onClick={() => setDialogOpen(true)}>
+            <Building2 className="h-12 w-12 mx-auto mb-4 text-slate-400" />
+            <p className="text-slate-600">Henüz müşteri eklenmemiş</p>
+            <Button className="mt-4" onClick={() => setDialogOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Müşteri Ekle
+              İlk Müşteriyi Ekle
             </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {clients.map((client) => (
-            <Card key={client.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-xl mb-1">{client.name}</CardTitle>
-                    <CardDescription className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      {client.brand_guidelines?.industry || 'Sektör belirtilmemiş'}
-                    </CardDescription>
-                  </div>
-                  <div className="flex gap-1">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {clients.map((client) => {
+            const industry = getIndustry(client);
+            const audience = getAudience(client);
+            const kws = getKeywords(client);
+            const igUrl = getInstagramUrl(client);
+
+            return (
+              <Card key={client.id}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-xl">{client.name}</CardTitle>
+                      <p className="text-sm text-slate-600 mt-1">
+                        {industry || 'Sektör bilgisi yok'}
+                      </p>
+                    </div>
                     <Button
                       variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(client)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
+                      size="icon"
                       onClick={() => handleDelete(client.id, client.name)}
+                      className="text-red-600 hover:text-red-700"
+                      aria-label={`${client.name} kaydını sil`}
                     >
-                      <Trash2 className="h-4 w-4 text-red-500" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {client.brand_guidelines?.target_audience && (
-                  <div className="flex items-start gap-2 text-sm">
-                    <Target className="h-4 w-4 text-slate-500 mt-0.5" />
-                    <span className="text-slate-600">{client.brand_guidelines.target_audience}</span>
-                  </div>
-                )}
-                
-                )}
+                </CardHeader>
 
-                {client.instagram_url && (
-                  <a 
-                    href={client.instagram_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    Instagram Profili
-                  </a>
-                )}
+                <CardContent>
+                  {audience && (
+                    <p className="text-sm text-slate-600 mb-2">
+                      🎯 {audience}
+                    </p>
+                  )}
 
-                {client.keywords?.keywords && client.keywords.keywords.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {client.keywords.keywords.slice(0, 3).map((keyword: string, idx: number) => (
-                      <Badge key={idx} variant="secondary" className="text-xs">
-                        {keyword}
-                      </Badge>
-                    ))}
-                    {client.keywords.keywords.length > 3 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{client.keywords.keywords.length - 3}
-                      </Badge>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                  {kws.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {kws.map((kw, i) => (
+                        <span
+                          key={`${kw}-${i}`}
+                          className="text-xs bg-slate-100 px-2 py-1 rounded"
+                        >
+                          {kw}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {igUrl && (
+                    <a
+                      href={igUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm underline text-slate-700"
+                    >
+                      Instagram profili
+                    </a>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
