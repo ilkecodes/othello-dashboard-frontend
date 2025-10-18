@@ -354,11 +354,6 @@ export default function ClientsPage() {
                   </div>
                 )}
                 
-                {client.brand_guidelines?.brand_voice && (
-                  <div className="flex items-start gap-2 text-sm">
-                    <MessageSquare className="h-4 w-4 text-slate-500 mt-0.5" />
-                    <span className="text-slate-600">{client.brand_guidelines.brand_voice}</span>
-                  </div>
                 )}
 
                 {client.instagram_url && (
