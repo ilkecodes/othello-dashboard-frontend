@@ -14,9 +14,9 @@ export default function DashboardLayout({
   const links = [
     { href: '/dashboard', label: 'Genel Bakış', icon: LayoutDashboard },
     { href: '/dashboard/clients', label: 'Müşteriler', icon: Users },
+    { href: '/dashboard/campaigns', label: 'Kampanyalar', icon: Target },
     { href: '/dashboard/trends', label: 'Trendler', icon: TrendingUp },
     { href: '/dashboard/content', label: 'İçerikler', icon: FileText },
-    { href: '/dashboard/campaigns', label: 'Kampanyalar', icon: Target },
     { href: '/dashboard/influencers', label: 'Influencer Keşfi', icon: UserSearch },
   ];
 
