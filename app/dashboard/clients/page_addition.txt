@@ -1,0 +1,23 @@
+// Edit modal için state ekle (useState'lerin yanına)
+const [editingClient, setEditingClient] = useState<any>(null);
+const [editDialogOpen, setEditDialogOpen] = useState(false);
+const [editInstagramUrl, setEditInstagramUrl] = useState('');
+
+// Edit handler
+const handleEdit = (client: any) => {
+  setEditingClient(client);
+  setEditInstagramUrl(client.instagram_url || '');
+  setEditDialogOpen(true);
+};
+
+// Update handler
+const handleUpdate = async () => {
+  try {
+    await updateClient(editingClient.id, { instagram_url: editInstagramUrl });
+    setEditDialogOpen(false);
+    loadClients();
+    alert('Müşteri güncellendi!');
+  } catch (error) {
+    alert('Güncelleme başarısız');
+  }
+};
