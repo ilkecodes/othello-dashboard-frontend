@@ -8,7 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Sparkles, MessageSquare, BarChart3, Copy, CheckCircle2, Instagram } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Loader2, Sparkles, MessageSquare, BarChart3, Copy, CheckCircle2, Instagram, History, Plus } from 'lucide-react';
 
 export default function BrandVoicePage() {
   const [clients, setClients] = useState<any[]>([]);
@@ -17,6 +18,7 @@ export default function BrandVoicePage() {
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [copied, setCopied] = useState(false);
+  const [generatedHistory, setGeneratedHistory] = useState<any[]>([]);
 
   // Instagram Sync
   const [instagramUsername, setInstagramUsername] = useState('');
@@ -30,14 +32,25 @@ export default function BrandVoicePage() {
   const [prompt, setPrompt] = useState('');
   const [generatedContent, setGeneratedContent] = useState('');
 
+  // Müşteri değiştiğinde localStorage'dan yükle
   useEffect(() => {
     loadClients();
+    
+    // Son seçilen müşteriyi yükle
+    const savedClientId = localStorage.getItem('selectedClientId');
+    if (savedClientId) {
+      setSelectedClient(savedClientId);
+    }
   }, []);
 
   useEffect(() => {
     if (selectedClient) {
+      // Müşteriyi localStorage'a kaydet
+      localStorage.setItem('selectedClientId', selectedClient);
+      
       loadProfile();
       loadStats();
+      loadGeneratedHistory();
     }
   }, [selectedClient]);
 
@@ -46,7 +59,7 @@ export default function BrandVoicePage() {
       const res = await getClients();
       setClients(res.data);
     } catch (error) {
-      console.error('Error loading clients:', error);
+      console.error('Müşteriler yüklenemedi:', error);
     }
   };
 
@@ -64,11 +77,40 @@ export default function BrandVoicePage() {
       const res = await brandVoice.stats(selectedClient);
       setStats(res.data);
     } catch (error) {
-      console.error('Error loading stats:', error);
+      console.error('İstatistikler yüklenemedi:', error);
     }
   };
 
-  // ✨ Instagram Auto-Sync
+  const loadGeneratedHistory = () => {
+    // localStorage'dan geçmiş içerikleri yükle
+    const historyKey = `brandVoiceHistory_${selectedClient}`;
+    const savedHistory = localStorage.getItem(historyKey);
+    if (savedHistory) {
+      try {
+        setGeneratedHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        setGeneratedHistory([]);
+      }
+    } else {
+      setGeneratedHistory([]);
+    }
+  };
+
+  const saveToHistory = (content: string, promptUsed: string, platform: string) => {
+    const historyKey = `brandVoiceHistory_${selectedClient}`;
+    const newItem = {
+      id: Date.now(),
+      content,
+      prompt: promptUsed,
+      platform,
+      timestamp: new Date().toISOString(),
+    };
+    
+    const updatedHistory = [newItem, ...generatedHistory].slice(0, 20); // Son 20 içeriği sakla
+    setGeneratedHistory(updatedHistory);
+    localStorage.setItem(historyKey, JSON.stringify(updatedHistory));
+  };
+
   const handleInstagramSync = async () => {
     if (!selectedClient || !instagramUsername) {
       alert('Lütfen müşteri seçin ve Instagram kullanıcı adı girin');
@@ -140,7 +182,14 @@ export default function BrandVoicePage() {
         prompt,
         platform,
       });
-      setGeneratedContent(res.data.text);
+      const generated = res.data.text;
+      setGeneratedContent(generated);
+      
+      // Geçmişe kaydet
+      saveToHistory(generated, prompt, platform);
+      
+      // İstatistikleri güncelle
+      loadStats();
     } catch (error: any) {
       alert('Hata: ' + (error.response?.data?.detail || error.message));
     } finally {
@@ -148,10 +197,17 @@ export default function BrandVoicePage() {
     }
   };
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(generatedContent);
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const deleteFromHistory = (id: number) => {
+    const historyKey = `brandVoiceHistory_${selectedClient}`;
+    const updatedHistory = generatedHistory.filter(item => item.id !== id);
+    setGeneratedHistory(updatedHistory);
+    localStorage.setItem(historyKey, JSON.stringify(updatedHistory));
   };
 
   return (
@@ -161,10 +217,11 @@ export default function BrandVoicePage() {
         <p className="text-slate-600">Markanıza özel, AI destekli içerik üretimi</p>
       </div>
 
-      {/* Client Selection */}
-      <Card>
+      {/* Client Selection - STICKY */}
+      <Card className="sticky top-4 z-10 shadow-lg">
         <CardHeader>
           <CardTitle>Müşteri Seçin</CardTitle>
+          <CardDescription>Son seçiminiz otomatik kaydedilir</CardDescription>
         </CardHeader>
         <CardContent>
           <Select value={selectedClient} onValueChange={setSelectedClient}>
@@ -203,8 +260,8 @@ export default function BrandVoicePage() {
                   <Sparkles className="h-4 w-4 text-slate-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.generated_contents}</div>
-                  <p className="text-xs text-slate-500 mt-1">AI ile üretildi</p>
+                  <div className="text-2xl font-bold">{generatedHistory.length}</div>
+                  <p className="text-xs text-slate-500 mt-1">Bu tarayıcıda</p>
                 </CardContent>
               </Card>
               <Card>
@@ -247,155 +304,215 @@ export default function BrandVoicePage() {
             </Card>
           )}
 
-          {/* ✨ INSTAGRAM AUTO-SYNC */}
-          {showInstagramSync && (!stats || stats.corpus_items < 3) && (
-            <Card className="border-pink-300 bg-gradient-to-r from-pink-50 to-purple-50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Instagram className="h-5 w-5 text-pink-600" />
-                  Instagram'dan Otomatik İçerik Çek
-                </CardTitle>
-                <CardDescription>
-                  Instagram profilinizden son paylaşımları otomatik olarak alın
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Input
-                  placeholder="Instagram kullanıcı adı (örn: nike)"
-                  value={instagramUsername}
-                  onChange={(e) => setInstagramUsername(e.target.value)}
-                />
-                <Button 
-                  onClick={handleInstagramSync} 
-                  disabled={loading}
-                  className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
-                >
-                  {loading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Instagram className="mr-2 h-4 w-4" />
-                  )}
-                  Instagram'dan Çek (15 Post)
-                </Button>
-                <p className="text-xs text-slate-500 text-center">
-                  veya manuel olarak aşağıdan içerik ekleyin
-                </p>
-              </CardContent>
-            </Card>
-          )}
+          {/* TABS: Yeni İçerik vs Geçmiş */}
+          <Tabs defaultValue="new" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="new">
+                <Plus className="mr-2 h-4 w-4" />
+                Yeni İçerik
+              </TabsTrigger>
+              <TabsTrigger value="history">
+                <History className="mr-2 h-4 w-4" />
+                Geçmiş ({generatedHistory.length})
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Step 1: Add Content (Manuel) */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Manuel İçerik Ekle</CardTitle>
-              <CardDescription>
-                İsterseniz manuel olarak da içerik ekleyebilirsiniz
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Select value={platform} onValueChange={setPlatform}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="instagram">Instagram</SelectItem>
-                  <SelectItem value="twitter">Twitter</SelectItem>
-                  <SelectItem value="linkedin">LinkedIn</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* YENİ İÇERİK OLUŞTURMA */}
+            <TabsContent value="new" className="space-y-6">
+              {/* Instagram Sync */}
+              {showInstagramSync && (!stats || stats.corpus_items < 3) && (
+                <Card className="border-pink-300 bg-gradient-to-r from-pink-50 to-purple-50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Instagram className="h-5 w-5 text-pink-600" />
+                      Instagram'dan Otomatik İçerik Çek
+                    </CardTitle>
+                    <CardDescription>
+                      Instagram profilinizden son paylaşımları otomatik olarak alın
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Input
+                      placeholder="Instagram kullanıcı adı (örn: nike)"
+                      value={instagramUsername}
+                      onChange={(e) => setInstagramUsername(e.target.value)}
+                    />
+                    <Button 
+                      onClick={handleInstagramSync} 
+                      disabled={loading}
+                      className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
+                    >
+                      {loading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Instagram className="mr-2 h-4 w-4" />
+                      )}
+                      Instagram'dan Çek (15 Post)
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
 
-              <Textarea
-                placeholder="Marka içeriğinizi buraya yapıştırın..."
-                value={contentText}
-                onChange={(e) => setContentText(e.target.value)}
-                rows={5}
-                className="resize-none"
-              />
+              {/* Manuel Add */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Manuel İçerik Ekle</CardTitle>
+                  <CardDescription>İsterseniz manuel olarak da içerik ekleyebilirsiniz</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Select value={platform} onValueChange={setPlatform}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="instagram">Instagram</SelectItem>
+                      <SelectItem value="twitter">Twitter</SelectItem>
+                      <SelectItem value="linkedin">LinkedIn</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Textarea
+                    placeholder="Marka içeriğinizi buraya yapıştırın..."
+                    value={contentText}
+                    onChange={(e) => setContentText(e.target.value)}
+                    rows={5}
+                  />
+                  <Button onClick={handleAddContent} disabled={loading} variant="outline">
+                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Manuel Ekle
+                  </Button>
+                </CardContent>
+              </Card>
 
-              <Button onClick={handleAddContent} disabled={loading} variant="outline">
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Manuel Ekle
-              </Button>
-            </CardContent>
-          </Card>
+              {/* Build Voice */}
+              {stats && stats.corpus_items >= 3 && !profile && (
+                <Card className="border-purple-300 bg-purple-50">
+                  <CardHeader>
+                    <CardTitle>Marka Sesi Oluştur</CardTitle>
+                    <CardDescription>
+                      {stats.corpus_items} içerik hazır. Analiz için hazırsınız!
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button onClick={handleBuildVoice} disabled={loading} className="w-full bg-purple-600 hover:bg-purple-700">
+                      {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                      AI ile Marka Sesi Oluştur
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
 
-          {/* Rest of the component stays the same... */}
-          {/* Step 2: Build Voice */}
-          {stats && stats.corpus_items >= 3 && !profile && (
-            <Card className="border-purple-300 bg-purple-50">
-              <CardHeader>
-                <CardTitle>Adım 2: Marka Sesi Oluştur</CardTitle>
-                <CardDescription>
-                  {stats.corpus_items} içerik hazır. Analiz için hazırsınız!
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button onClick={handleBuildVoice} disabled={loading} className="w-full bg-purple-600 hover:bg-purple-700">
-                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                  AI ile Marka Sesi Oluştur
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+              {/* Generate Content */}
+              {profile && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>İçerik Üret</CardTitle>
+                    <CardDescription>Markanıza uygun AI destekli içerik oluşturun</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Select value={platform} onValueChange={setPlatform}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="instagram">Instagram</SelectItem>
+                        <SelectItem value="twitter">Twitter</SelectItem>
+                        <SelectItem value="linkedin">LinkedIn</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Textarea
+                      placeholder="Ne hakkında içerik üretmek istiyorsunuz?"
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      rows={3}
+                    />
+                    <Button onClick={handleGenerate} disabled={loading} className="w-full">
+                      {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                      İçerik Üret
+                    </Button>
 
-          {/* Step 3: Generate Content */}
-          {profile && (
-            <Card>
-              <CardHeader>
-                <CardTitle>İçerik Üret</CardTitle>
-                <CardDescription>Markanıza uygun AI destekli içerik oluşturun</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Select value={platform} onValueChange={setPlatform}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="instagram">Instagram</SelectItem>
-                    <SelectItem value="twitter">Twitter</SelectItem>
-                    <SelectItem value="linkedin">LinkedIn</SelectItem>
-                  </SelectContent>
-                </Select>
+                    {generatedContent && (
+                      <div className="mt-4 p-4 bg-slate-50 rounded-lg border">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-semibold flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-purple-600" />
+                            Üretilen İçerik:
+                          </h4>
+                          <Button variant="outline" size="sm" onClick={() => copyToClipboard(generatedContent)}>
+                            {copied ? (
+                              <>
+                                <CheckCircle2 className="mr-2 h-4 w-4" />
+                                Kopyalandı!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="mr-2 h-4 w-4" />
+                                Kopyala
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        <p className="whitespace-pre-wrap text-slate-700">{generatedContent}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
 
-                <Textarea
-                  placeholder="Ne hakkında içerik üretmek istiyorsunuz?"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  rows={3}
-                />
-
-                <Button onClick={handleGenerate} disabled={loading} className="w-full">
-                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                  İçerik Üret
-                </Button>
-
-                {generatedContent && (
-                  <div className="mt-4 p-4 bg-slate-50 rounded-lg border">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-purple-600" />
-                        Üretilen İçerik:
-                      </h4>
-                      <Button variant="outline" size="sm" onClick={copyToClipboard}>
-                        {copied ? (
-                          <>
-                            <CheckCircle2 className="mr-2 h-4 w-4" />
-                            Kopyalandı!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="mr-2 h-4 w-4" />
-                            Kopyala
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                    <p className="whitespace-pre-wrap text-slate-700">{generatedContent}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+            {/* GEÇMİŞ İÇERİKLER */}
+            <TabsContent value="history" className="space-y-4">
+              {generatedHistory.length === 0 ? (
+                <Card>
+                  <CardContent className="py-8 text-center text-slate-500">
+                    <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Henüz içerik üretmediniz</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                generatedHistory.map((item) => (
+                  <Card key={item.id}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{item.platform}</Badge>
+                          <span className="text-sm text-slate-500">
+                            {new Date(item.timestamp).toLocaleDateString('tr-TR', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => copyToClipboard(item.content)}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => deleteFromHistory(item.id)}
+                          >
+                            Sil
+                          </Button>
+                        </div>
+                      </div>
+                      <CardDescription className="mt-2">
+                        <span className="font-semibold">Prompt:</span> {item.prompt}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="whitespace-pre-wrap text-slate-700">{item.content}</p>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </TabsContent>
+          </Tabs>
         </>
       )}
     </div>
