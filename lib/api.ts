@@ -9,6 +9,8 @@ const api = axios.create({
   },
 });
 
+// ... (diğer fonksiyonlar aynı)
+
 // Clients
 export const getClients = () => api.get('/api/clients/');
 export const createClient = (data: any) => api.post('/api/clients/', data);
@@ -29,8 +31,7 @@ export const getContent = (clientId?: string) => {
 export const searchInfluencers = (data: any) => api.post('/api/influencers/search', data);
 export const getInfluencers = () => api.get('/api/influencers/');
 
-// ============= BRAND VOICE =============
-
+// Brand Voice
 export const brandVoice = {
   health: () => api.get('/api/brand-voice/health'),
   
@@ -41,6 +42,16 @@ export const brandVoice = {
     text_content: string;
     post_metadata?: any;
   }) => api.post('/api/brand-voice/corpus', data),
+  
+  // ✨ YENİ: Instagram Auto-Sync
+  syncInstagram: (clientId: string, instagramUsername: string, maxPosts: number = 15) =>
+    api.post('/api/brand-voice/sync-instagram', null, {
+      params: {
+        client_id: clientId,
+        instagram_username: instagramUsername,
+        max_posts: maxPosts
+      }
+    }),
   
   build: (clientId: string, forceRebuild: boolean = false) => 
     api.post('/api/brand-voice/build', {

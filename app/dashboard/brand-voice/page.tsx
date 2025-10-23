@@ -5,9 +5,10 @@ import { brandVoice, getClients } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Sparkles, MessageSquare, BarChart3, Copy, CheckCircle2 } from 'lucide-react';
+import { Loader2, Sparkles, MessageSquare, BarChart3, Copy, CheckCircle2, Instagram } from 'lucide-react';
 
 export default function BrandVoicePage() {
   const [clients, setClients] = useState<any[]>([]);
@@ -16,6 +17,10 @@ export default function BrandVoicePage() {
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [copied, setCopied] = useState(false);
+
+  // Instagram Sync
+  const [instagramUsername, setInstagramUsername] = useState('');
+  const [showInstagramSync, setShowInstagramSync] = useState(true);
 
   // Step 1: Add Content
   const [contentText, setContentText] = useState('');
@@ -60,6 +65,26 @@ export default function BrandVoicePage() {
       setStats(res.data);
     } catch (error) {
       console.error('Error loading stats:', error);
+    }
+  };
+
+  // ✨ Instagram Auto-Sync
+  const handleInstagramSync = async () => {
+    if (!selectedClient || !instagramUsername) {
+      alert('Lütfen müşteri seçin ve Instagram kullanıcı adı girin');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await brandVoice.syncInstagram(selectedClient, instagramUsername, 15);
+      alert(`✅ ${res.data.posts_added} Instagram postu eklendi!`);
+      setShowInstagramSync(false);
+      loadStats();
+    } catch (error: any) {
+      alert('Hata: ' + (error.response?.data?.detail || error.message));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -222,12 +247,49 @@ export default function BrandVoicePage() {
             </Card>
           )}
 
-          {/* Step 1: Add Content */}
+          {/* ✨ INSTAGRAM AUTO-SYNC */}
+          {showInstagramSync && (!stats || stats.corpus_items < 3) && (
+            <Card className="border-pink-300 bg-gradient-to-r from-pink-50 to-purple-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Instagram className="h-5 w-5 text-pink-600" />
+                  Instagram'dan Otomatik İçerik Çek
+                </CardTitle>
+                <CardDescription>
+                  Instagram profilinizden son paylaşımları otomatik olarak alın
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Input
+                  placeholder="Instagram kullanıcı adı (örn: nike)"
+                  value={instagramUsername}
+                  onChange={(e) => setInstagramUsername(e.target.value)}
+                />
+                <Button 
+                  onClick={handleInstagramSync} 
+                  disabled={loading}
+                  className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
+                >
+                  {loading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Instagram className="mr-2 h-4 w-4" />
+                  )}
+                  Instagram'dan Çek (15 Post)
+                </Button>
+                <p className="text-xs text-slate-500 text-center">
+                  veya manuel olarak aşağıdan içerik ekleyin
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 1: Add Content (Manuel) */}
           <Card>
             <CardHeader>
-              <CardTitle>Adım 1: Marka İçeriği Ekle</CardTitle>
+              <CardTitle>Manuel İçerik Ekle</CardTitle>
               <CardDescription>
-                Markanızın mevcut içeriklerinden 5-10 örnek ekleyin (Instagram, Twitter vb.)
+                İsterseniz manuel olarak da içerik ekleyebilirsiniz
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -250,13 +312,14 @@ export default function BrandVoicePage() {
                 className="resize-none"
               />
 
-              <Button onClick={handleAddContent} disabled={loading}>
+              <Button onClick={handleAddContent} disabled={loading} variant="outline">
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                İçerik Ekle
+                Manuel Ekle
               </Button>
             </CardContent>
           </Card>
 
+          {/* Rest of the component stays the same... */}
           {/* Step 2: Build Voice */}
           {stats && stats.corpus_items >= 3 && !profile && (
             <Card className="border-purple-300 bg-purple-50">
@@ -279,10 +342,8 @@ export default function BrandVoicePage() {
           {profile && (
             <Card>
               <CardHeader>
-                <CardTitle>Adım 3: İçerik Üret</CardTitle>
-                <CardDescription>
-                  Markanıza uygun AI destekli içerik oluşturun
-                </CardDescription>
+                <CardTitle>İçerik Üret</CardTitle>
+                <CardDescription>Markanıza uygun AI destekli içerik oluşturun</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Select value={platform} onValueChange={setPlatform}>
@@ -297,11 +358,10 @@ export default function BrandVoicePage() {
                 </Select>
 
                 <Textarea
-                  placeholder="Ne hakkında içerik üretmek istiyorsunuz? (örn: 'Yaz indirimi duyurusu')"
+                  placeholder="Ne hakkında içerik üretmek istiyorsunuz?"
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   rows={3}
-                  className="resize-none"
                 />
 
                 <Button onClick={handleGenerate} disabled={loading} className="w-full">
@@ -316,11 +376,7 @@ export default function BrandVoicePage() {
                         <Sparkles className="h-4 w-4 text-purple-600" />
                         Üretilen İçerik:
                       </h4>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={copyToClipboard}
-                      >
+                      <Button variant="outline" size="sm" onClick={copyToClipboard}>
                         {copied ? (
                           <>
                             <CheckCircle2 className="mr-2 h-4 w-4" />
