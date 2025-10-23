@@ -26,18 +26,26 @@ export default function ContentPage() {
   const loadClients = async () => {
     try {
       const res = await getClients();
-      setClients(res.data);
+      setClients(res.data || []);
     } catch (error) {
       console.error('Müşteriler yüklenemedi:', error);
+      setClients([]);
     }
   };
 
   const loadContent = async () => {
     try {
       const res = await getContent();
-      setContentList(res.data);
+      // API'den array veya obje gelebilir, kontrol et
+      const data = res.data;
+      if (Array.isArray(data)) {
+        setContentList(data);
+      } else {
+        setContentList([]);
+      }
     } catch (error) {
       console.error('İçerikler yüklenemedi:', error);
+      setContentList([]);
     }
   };
 
