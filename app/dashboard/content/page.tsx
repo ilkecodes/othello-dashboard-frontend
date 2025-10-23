@@ -1,309 +1,185 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { getClients, generateContent, getContent } from '@/lib/api';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { generateContent, getClients } from '@/lib/api';
-import { Sparkles, FileText, Target, Users, TrendingUp } from 'lucide-react';
-
-const contentGoals = [
-  { value: 'awareness', label: 'Bilinirlik Artırma', icon: '📢', color: 'blue' },
-  { value: 'engagement', label: 'Etkileşim', icon: '❤️', color: 'pink' },
-  { value: 'sales', label: 'Satış', icon: '💰', color: 'green' },
-  { value: 'education', label: 'Bilgilendirme', icon: '��', color: 'purple' },
-  { value: 'community', label: 'Topluluk', icon: '👥', color: 'orange' }
-];
-
-const platformTypes: Record<string, any> = {
-  instagram: {
-    types: [
-      { value: 'feed', label: 'Feed Post', description: 'Klasik Instagram paylaşımı' },
-      { value: 'reel', label: 'Reels', description: 'Kısa video içeriği' },
-      { value: 'story', label: 'Story', description: '24 saat görünür içerik' },
-      { value: 'carousel', label: 'Carousel', description: 'Çoklu görsel paylaşımı' }
-    ]
-  },
-  facebook: {
-    types: [
-      { value: 'post', label: 'Post', description: 'Standart paylaşım' },
-      { value: 'video', label: 'Video', description: 'Video içeriği' },
-      { value: 'event', label: 'Event', description: 'Etkinlik duyurusu' }
-    ]
-  },
-  linkedin: {
-    types: [
-      { value: 'post', label: 'Post', description: 'Profesyonel paylaşım' },
-      { value: 'article', label: 'Article', description: 'Uzun form içerik' },
-      { value: 'poll', label: 'Poll', description: 'Anket' }
-    ]
-  },
-  tiktok: {
-    types: [
-      { value: 'video', label: 'Video', description: 'Kısa video' },
-      { value: 'duet', label: 'Duet', description: 'İşbirliği videosu' }
-    ]
-  }
-};
-
-const toneOptions = [
-  { value: 'professional', label: 'Profesyonel', emoji: '👔' },
-  { value: 'friendly', label: 'Samimi', emoji: '😊' },
-  { value: 'casual', label: 'Gündelik', emoji: '��' },
-  { value: 'energetic', label: 'Enerjik', emoji: '⚡' },
-  { value: 'inspirational', label: 'İlham Verici', emoji: '✨' },
-  { value: 'humorous', label: 'Eğlenceli', emoji: '😄' }
-];
+import { Loader2, FileText, Copy } from 'lucide-react';
 
 export default function ContentPage() {
   const [clients, setClients] = useState<any[]>([]);
-  const [clientId, setClientId] = useState('');
+  const [selectedClient, setSelectedClient] = useState('');
   const [platform, setPlatform] = useState('instagram');
-  const [contentType, setContentType] = useState('feed');
-  const [goal, setGoal] = useState('awareness');
-  const [topic, setTopic] = useState('');
+  const [prompt, setPrompt] = useState('');
   const [tone, setTone] = useState('professional');
-  const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [generatedText, setGeneratedText] = useState('');
+  const [contentList, setContentList] = useState<any[]>([]);
 
   useEffect(() => {
-    getClients().then(res => setClients(res.data)).catch(console.error);
+    loadClients();
+    loadContent();
   }, []);
 
-  const selectedClient = clients.find(c => c.id === clientId);
-  const selectedGoal = contentGoals.find(g => g.value === goal);
+  const loadClients = async () => {
+    try {
+      const res = await getClients();
+      setClients(res.data);
+    } catch (error) {
+      console.error('Müşteriler yüklenemedi:', error);
+    }
+  };
+
+  const loadContent = async () => {
+    try {
+      const res = await getContent();
+      setContentList(res.data);
+    } catch (error) {
+      console.error('İçerikler yüklenemedi:', error);
+    }
+  };
 
   const handleGenerate = async () => {
-    if (!clientId || !topic) return;
+    if (!selectedClient || !prompt) {
+      alert('Lütfen müşteri seçin ve prompt girin');
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await generateContent({
-        client_id: clientId,
+        client_id: selectedClient,
         platform,
-        content_type: contentType,
-        topic,
+        prompt,
         tone,
-        goal
       });
-      setResult(res.data);
-    } catch (error) {
-      console.error('İçerik üretimi hatası:', error);
+      setGeneratedText(res.data.text || '');
+      loadContent();
+    } catch (error: any) {
+      alert('Hata: ' + (error.response?.data?.detail || error.message));
     } finally {
       setLoading(false);
     }
   };
 
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(generatedText);
+    alert('Kopyalandı!');
+  };
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">İçerik Üretimi</h1>
-        <p className="text-slate-600">AI destekli sosyal medya içeriği oluşturun</p>
+        <h1 className="text-3xl font-bold mb-2">İçerik Üretimi</h1>
+        <p className="text-slate-600">AI ile içerik oluşturun</p>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5" />
-              Yeni İçerik Oluştur
-            </CardTitle>
-            <CardDescription>Parametreleri seçin ve AI içerik üretsin</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Müşteri Seçimi */}
-            <div>
-              <label className="text-sm font-medium mb-2 block">Müşteri</label>
-              <Select value={clientId} onValueChange={setClientId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Müşteri seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map(client => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedClient && (
-                <div className="mt-2 p-3 bg-slate-50 rounded-lg">
-                  <p className="text-sm font-medium">{selectedClient.brand_guidelines?.industry}</p>
-                  <p className="text-xs text-slate-600 mt-1">
-                    {selectedClient.brand_guidelines?.brand_voice}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Amaç Seçimi */}
-            <div>
-              <label className="text-sm font-medium mb-2 block">İçerik Amacı</label>
-              <div className="grid grid-cols-2 gap-2">
-                {contentGoals.map(g => (
-                  <button
-                    key={g.value}
-                    onClick={() => setGoal(g.value)}
-                    className={`p-3 border-2 rounded-lg text-left transition ${
-                      goal === g.value
-                        ? `border-${g.color}-600 bg-${g.color}-50`
-                        : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">{g.icon}</span>
-                      <span className="text-sm font-medium">{g.label}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Platform ve Tür */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Platform</label>
-                <Select value={platform} onValueChange={(v) => { setPlatform(v); setContentType(platformTypes[v].types[0].value); }}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="instagram">📷 Instagram</SelectItem>
-                    <SelectItem value="facebook">📘 Facebook</SelectItem>
-                    <SelectItem value="linkedin">💼 LinkedIn</SelectItem>
-                    <SelectItem value="tiktok">🎵 TikTok</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium mb-2 block">İçerik Türü</label>
-                <Select value={contentType} onValueChange={setContentType}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {platformTypes[platform]?.types.map((type: any) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-slate-500 mt-1">
-                  {platformTypes[platform]?.types.find((t: any) => t.value === contentType)?.description}
-                </p>
-              </div>
-            </div>
-
-            {/* Ton */}
-            <div>
-              <label className="text-sm font-medium mb-2 block">İçerik Tonu</label>
-              <div className="grid grid-cols-3 gap-2">
-                {toneOptions.map(t => (
-                  <button
-                    key={t.value}
-                    onClick={() => setTone(t.value)}
-                    className={`p-2 border rounded-lg text-sm transition ${
-                      tone === t.value
-                        ? 'border-pink-600 bg-pink-50'
-                        : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <span className="mr-1">{t.emoji}</span>
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Konu */}
-            <div>
-              <label className="text-sm font-medium mb-2 block">Konu / Tema</label>
-              <Input 
-                placeholder="Örn: Bahar mevsimi sağlık ipuçları"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-              />
-            </div>
-
-            <Button 
-              onClick={handleGenerate} 
-              disabled={loading || !clientId || !topic}
-              className="w-full"
-            >
-              {loading ? 'Üretiliyor...' : 'İçerik Üret'}
-            </Button>
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5" />
-              Seçilen Parametreler
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {selectedClient ? (
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <p className="text-xs text-blue-600">Müşteri</p>
-                <p className="text-sm font-semibold">{selectedClient.name}</p>
-              </div>
-            ) : (
-              <div className="p-3 bg-slate-100 rounded-lg text-sm text-slate-500">
-                Müşteri seçilmedi
-              </div>
-            )}
-
-            {selectedGoal && (
-              <div className="p-3 bg-purple-50 rounded-lg">
-                <p className="text-xs text-purple-600">Amaç</p>
-                <p className="text-sm font-semibold">
-                  {selectedGoal.icon} {selectedGoal.label}
-                </p>
-              </div>
-            )}
-
-            <div className="p-3 bg-green-50 rounded-lg">
-              <p className="text-xs text-green-600">Platform</p>
-              <p className="text-sm font-semibold capitalize">{platform} - {contentType}</p>
-            </div>
-
-            <div className="p-3 bg-orange-50 rounded-lg">
-              <p className="text-xs text-orange-600">Ton</p>
-              <p className="text-sm font-semibold">
-                {toneOptions.find(t => t.value === tone)?.emoji} {toneOptions.find(t => t.value === tone)?.label}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {result && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Üretilen İçerik
-            </CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Toplam İçerik</CardTitle>
+            <FileText className="h-4 w-4 text-slate-500" />
           </CardHeader>
           <CardContent>
-            <div className="bg-slate-50 p-6 rounded-lg whitespace-pre-wrap font-mono text-sm">
-              {result.content || result.text}
-            </div>
-            <div className="flex gap-2 mt-4">
-              <Button variant="outline" onClick={() => navigator.clipboard.writeText(result.content || result.text)}>
-                📋 Kopyala
-              </Button>
-              <Button variant="outline">
-                💾 Kaydet
-              </Button>
-            </div>
+            <div className="text-2xl font-bold">{contentList.length}</div>
           </CardContent>
         </Card>
-      )}
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Yeni İçerik Üret</CardTitle>
+          <CardDescription>AI destekli içerik oluşturun</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Select value={selectedClient} onValueChange={setSelectedClient}>
+            <SelectTrigger>
+              <SelectValue placeholder="Müşteri seçin..." />
+            </SelectTrigger>
+            <SelectContent>
+              {clients.map((client) => (
+                <SelectItem key={client.id} value={client.id}>
+                  {client.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={platform} onValueChange={setPlatform}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="instagram">Instagram</SelectItem>
+              <SelectItem value="twitter">Twitter</SelectItem>
+              <SelectItem value="linkedin">LinkedIn</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={tone} onValueChange={setTone}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="professional">Profesyonel</SelectItem>
+              <SelectItem value="casual">Samimi</SelectItem>
+              <SelectItem value="friendly">Arkadaşça</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Textarea
+            placeholder="İçerik konusu veya prompt..."
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            rows={4}
+          />
+
+          <Button onClick={handleGenerate} disabled={loading} className="w-full">
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            İçerik Üret
+          </Button>
+
+          {generatedText && (
+            <div className="mt-4 p-4 bg-slate-50 rounded-lg border">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-semibold">Üretilen İçerik:</h4>
+                <Button variant="outline" size="sm" onClick={copyToClipboard}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Kopyala
+                </Button>
+              </div>
+              <p className="whitespace-pre-wrap">{generatedText}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Son İçerikler</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {contentList.length === 0 ? (
+            <p className="text-slate-500 text-center py-4">Henüz içerik üretilmedi</p>
+          ) : (
+            <div className="space-y-4">
+              {contentList.slice(0, 10).map((content: any) => (
+                <div key={content.id} className="p-4 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm font-medium">{content.platform}</span>
+                    <span className="text-xs text-slate-500">
+                      {new Date(content.created_at).toLocaleDateString('tr-TR')}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-700">{content.text}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
