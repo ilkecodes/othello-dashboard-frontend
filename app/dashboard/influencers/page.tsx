@@ -43,7 +43,7 @@ export default function InfluencersPage() {
     setLoading(true);
     
     try {
-      const res = await fetch('http://localhost:8000/api/influencer-discovery/search', {
+      const res = await fetch('/api/influencer-discovery/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -63,7 +63,7 @@ export default function InfluencersPage() {
 
   const handleSave = async (inf: Influencer) => {
     try {
-      const res = await fetch('http://localhost:8000/api/influencer-stats/save', {
+      const res = await fetch('/api/influencer-stats/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
