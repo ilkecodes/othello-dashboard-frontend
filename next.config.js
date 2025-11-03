@@ -1,5 +1,3 @@
-const path = require('path');
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Prod'da backend'e proxy
@@ -12,10 +10,7 @@ const nextConfig = {
     ];
   },
 
-  // Workspace root uyarısını sustur
-  outputFileTracingRoot: path.join(__dirname, '..'),
-
-  // ŞİMDİLİK: ESLint'i build'te es geç (deploy için hızlı çözüm)
+  // Hızlı deploy için lint’i build’te atla (sonra açarız)
   eslint: {
     ignoreDuringBuilds: true,
   },
