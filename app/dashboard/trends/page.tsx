@@ -1,33 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { API_URL } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { 
   Search, TrendingUp, Lightbulb, Target, Hash, Clock,
-  Zap, BarChart3, Sparkles, ArrowUp, ArrowDown, Minus,
-  Music, Globe, Trophy, Loader2, RefreshCw, Film, Image,
-  Layers, PlayCircle
+  Zap, BarChart3, Sparkles, Music, Globe, Trophy, 
+  Loader2, RefreshCw, Film, PlayCircle, Award
 } from 'lucide-react';
 
-interface GoogleTrend {
-  keyword: string;
-  interest: number;
-  category: string;
-  trend_emoji: string;
-}
-
-interface TikTokTrend {
-  hashtag: string;
-  views: string;
-  posts: number;
-  growth: string;
-  category: string;
-  rank: number;
-}
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 interface ContentType {
   type: string;
@@ -37,39 +21,12 @@ interface ContentType {
   emoji: string;
 }
 
-interface ContentTypeAnalysis {
-  niche: string;
-  total_posts_analyzed: number;
-  content_types: {
-    distribution: ContentType[];
-    insights?: string[];
-  };
-  top_performing_type: ContentType;
-  recommendations: string[];
-}
-
-interface DashboardData {
-  google_trends: GoogleTrend[];
-  tiktok_trends: TikTokTrend[];
-  last_updated: string;
-}
-
-interface SearchResult {
-  query: string;
-  niche: any;
-  google_analysis: any[];
-  tiktok_analysis: any[];
-  content_types?: ContentTypeAnalysis;
-  ranked_trends: any[];
-  ai_insights: any;
-}
-
 export default function TrendsPage() {
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
-  const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
+  const [searchResult, setSearchResult] = useState<any>(null);
 
   const examples = [
     "yemek tarifi videolu",
@@ -120,17 +77,6 @@ export default function TrendsPage() {
     } finally {
       setSearchLoading(false);
     }
-  };
-
-  const getContentTypeIcon = (type: string) => {
-    const icons: {[key: string]: any} = {
-      'video': <PlayCircle className="h-5 w-5" />,
-      'carousel': <Layers className="h-5 w-5" />,
-      'single_image': <Image className="h-5 w-5" />,
-      'story': <Film className="h-5 w-5" />,
-      'tutorial': <Lightbulb className="h-5 w-5" />
-    };
-    return icons[type] || <Image className="h-5 w-5" />;
   };
 
   const getContentTypeColor = (percentage: number) => {
@@ -207,7 +153,7 @@ export default function TrendsPage() {
         </CardContent>
       </Card>
 
-      {/* Loading State */}
+      {/* Loading */}
       {searchLoading && (
         <Card>
           <CardContent className="py-12">
@@ -220,26 +166,265 @@ export default function TrendsPage() {
         </Card>
       )}
 
-      {/* Search Results - Simplified for now */}
+      {/* SEARCH RESULTS */}
       {searchResult && !searchLoading && (
-        <div className="space-y-4">
-          <Card>
+        <div className="space-y-6">
+          {/* Niche Detection */}
+          <Card className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
             <CardHeader>
-              <CardTitle>Arama Sonuçları</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5" />
+                Niş Tespiti
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <pre className="text-xs overflow-auto max-h-96">
-                {JSON.stringify(searchResult, null, 2)}
-              </pre>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">Ana Niş</p>
+                  <Badge className="text-lg px-4 py-2">{searchResult.niche.niche}</Badge>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">Alt Kategori</p>
+                  <Badge variant="outline" className="text-lg px-4 py-2">{searchResult.niche.sub_niche}</Badge>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">Açıklama</p>
+                  <p className="text-sm">{searchResult.niche.description}</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
+
+          {/* Content Types */}
+          {searchResult.content_types && (
+            <Card className="bg-gradient-to-r from-orange-50 to-yellow-50 border-orange-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Film className="h-5 w-5 text-orange-600" />
+                  En Trend İçerik Türleri
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Top Performer */}
+                <div className="bg-white rounded-lg p-4 border-2 border-orange-300">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 text-white text-2xl">
+                      {searchResult.content_types.top_performing_type.emoji}
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600">🏆 En Yüksek Performans</p>
+                      <p className="font-bold text-lg">{searchResult.content_types.top_performing_type.description}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 mt-3">
+                    <div className="text-center p-2 bg-orange-50 rounded">
+                      <p className="text-2xl font-bold text-orange-600">
+                        %{searchResult.content_types.top_performing_type.percentage}
+                      </p>
+                      <p className="text-xs text-gray-600">Oran</p>
+                    </div>
+                    <div className="text-center p-2 bg-green-50 rounded">
+                      <p className="text-2xl font-bold text-green-600">
+                        {searchResult.content_types.top_performing_type.avg_engagement}x
+                      </p>
+                      <p className="text-xs text-gray-600">Avg Engagement</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Distribution */}
+                <div className="space-y-3">
+                  <p className="font-semibold text-sm">İçerik Türü Dağılımı:</p>
+                  {searchResult.content_types.content_types.distribution.map((ct: ContentType, idx: number) => (
+                    <div key={idx} className="bg-white rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{ct.emoji}</span>
+                          <div>
+                            <p className="font-semibold text-sm">{ct.description}</p>
+                            <p className="text-xs text-gray-500">{ct.type}</p>
+                          </div>
+                        </div>
+                        <Badge className="text-lg px-3 py-1">{ct.percentage}%</Badge>
+                      </div>
+                      
+                      <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full bg-gradient-to-r ${getContentTypeColor(ct.percentage)} transition-all duration-500`}
+                          style={{ width: `${ct.percentage}%` }}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between mt-2 text-xs text-gray-600">
+                        <span>Ortalama Engagement:</span>
+                        <span className="font-semibold text-green-600">{ct.avg_engagement}x</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Insights */}
+                {searchResult.content_types.content_types.insights && (
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <p className="font-semibold text-sm mb-2 flex items-center gap-2">
+                      <Lightbulb className="h-4 w-4 text-blue-600" />
+                      İçgörüler
+                    </p>
+                    <div className="space-y-1">
+                      {searchResult.content_types.content_types.insights.map((insight: string, idx: number) => (
+                        <p key={idx} className="text-sm text-gray-700">• {insight}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recommendations */}
+                {searchResult.content_types.recommendations && (
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <p className="font-semibold text-sm mb-2 flex items-center gap-2">
+                      <Award className="h-4 w-4 text-green-600" />
+                      Öneriler
+                    </p>
+                    <div className="space-y-1">
+                      {searchResult.content_types.recommendations.map((rec: string, idx: number) => (
+                        <p key={idx} className="text-sm text-gray-700">✓ {rec}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Ranked Trends */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-yellow-600" />
+                Top Trendler
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {searchResult.ranked_trends.slice(0, 10).map((trend: any, idx: number) => (
+                  <div key={idx} className="flex items-center gap-4 p-4 border rounded-lg hover:bg-gray-50 transition">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 text-white font-bold">
+                      {trend.overall_rank}
+                    </div>
+                    
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold">{trend.keyword}</span>
+                        <Badge variant="outline" className="text-xs">{trend.source}</Badge>
+                        <span className="text-xl">{trend.growth}</span>
+                      </div>
+                      
+                      {trend.tiktok_views && (
+                        <p className="text-sm text-gray-600">
+                          {trend.tiktok_views} views • {trend.tiktok_posts?.toLocaleString()} posts
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-purple-600">{trend.score}</div>
+                      <div className="text-xs text-gray-500">skor</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* AI Insights */}
+          {searchResult.ai_insights && (
+            <Card className="bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-blue-600" />
+                  AI İçgörüler ve Öneriler
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Summary */}
+                <div className="bg-white rounded-lg p-4">
+                  <p className="font-semibold mb-2 flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    Özet
+                  </p>
+                  <p className="text-sm text-gray-700">{searchResult.ai_insights.summary}</p>
+                </div>
+
+                {/* Opportunities */}
+                <div className="bg-white rounded-lg p-4">
+                  <p className="font-semibold mb-3 flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-yellow-600" />
+                    Fırsatlar
+                  </p>
+                  <div className="space-y-2">
+                    {searchResult.ai_insights.opportunities.map((opp: string, idx: number) => (
+                      <div key={idx} className="flex items-start gap-2">
+                        <span className="text-yellow-600">💡</span>
+                        <p className="text-sm">{opp}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Content Ideas */}
+                <div className="bg-white rounded-lg p-4">
+                  <p className="font-semibold mb-3 flex items-center gap-2">
+                    <Lightbulb className="h-4 w-4 text-purple-600" />
+                    İçerik Fikirleri
+                  </p>
+                  <div className="space-y-3">
+                    {searchResult.ai_insights.content_ideas.map((idea: any, idx: number) => (
+                      <div key={idx} className="border-l-4 border-purple-500 pl-3 py-2">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline">{idea.type}</Badge>
+                          <span className="font-semibold text-sm">{idea.title}</span>
+                        </div>
+                        <p className="text-sm text-gray-700">{idea.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Hashtags */}
+                <div className="bg-white rounded-lg p-4">
+                  <p className="font-semibold mb-3 flex items-center gap-2">
+                    <Hash className="h-4 w-4 text-blue-600" />
+                    Önerilen Hashtag'ler
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {searchResult.ai_insights.hashtag_recommendations.map((tag: string, idx: number) => (
+                      <Badge key={idx} className="text-sm px-3 py-1">{tag}</Badge>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Best Time */}
+                <div className="bg-white rounded-lg p-4">
+                  <p className="font-semibold mb-2 flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-green-600" />
+                    En İyi Paylaşım Zamanı
+                  </p>
+                  <Badge className="bg-green-100 text-green-800 text-sm px-3 py-1">
+                    {searchResult.ai_insights.best_time === 'morning' ? '🌅 Sabah (8-11)' :
+                     searchResult.ai_insights.best_time === 'afternoon' ? '☀️ Öğleden Sonra (12-17)' :
+                     '🌙 Akşam (18-22)'}
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
       {/* Dashboard */}
       {!searchResult && !searchLoading && !loading && dashboardData && (
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Google Trends */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -249,7 +434,7 @@ export default function TrendsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {dashboardData.google_trends.slice(0, 10).map((trend, idx) => (
+                {dashboardData.google_trends?.slice(0, 10).map((trend: any, idx: number) => (
                   <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{trend.trend_emoji}</span>
@@ -270,7 +455,6 @@ export default function TrendsPage() {
             </CardContent>
           </Card>
 
-          {/* TikTok Trends */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -280,7 +464,7 @@ export default function TrendsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {dashboardData.tiktok_trends.slice(0, 10).map((trend, idx) => (
+                {dashboardData.tiktok_trends?.slice(0, 10).map((trend: any, idx: number) => (
                   <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 text-white text-xs font-bold flex items-center justify-center">
