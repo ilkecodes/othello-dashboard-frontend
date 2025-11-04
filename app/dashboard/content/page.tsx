@@ -1,49 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Loader2, Copy, Download, Wand2 } from 'lucide-react';
+import { Sparkles, Loader2, Copy, Download, Film, Image, FileText } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-interface Client {
-  id: number;
-  name: string;
-  industry: string;
-}
-
 export default function ContentPage() {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [selectedClient, setSelectedClient] = useState('');
+  const [clientName, setClientName] = useState('');
   const [platform, setPlatform] = useState('instagram');
   const [contentType, setContentType] = useState('post');
-  const [purpose, setPurpose] = useState('');
-  const [additionalNotes, setAdditionalNotes] = useState('');
+  const [topic, setTopic] = useState('');
+  const [goal, setGoal] = useState('');
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Müşterileri yükle
-  useEffect(() => {
-    loadClients();
-  }, []);
-
-  const loadClients = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/clients`);
-      const data = await response.json();
-      setClients(data.clients || []);
-    } catch (error) {
-      console.error('Error loading clients:', error);
-    }
-  };
-
   const handleGenerate = async () => {
-    if (!selectedClient || !purpose) {
-      alert('Lütfen müşteri ve amaç seçin!');
+    if (!clientName || !topic || !goal) {
+      alert('Lütfen tüm alanları doldurun!');
       return;
     }
     
@@ -51,31 +29,23 @@ export default function ContentPage() {
     setResult('');
     
     try {
-      // Müşteri bilgisini al
-      const client = clients.find(c => c.id === parseInt(selectedClient));
-      
-      // Prompt oluştur
-      const prompt = `
-Müşteri: ${client?.name} (${client?.industry})
-Platform: ${platform}
-İçerik Türü: ${contentType}
-Amaç: ${purpose}
-${additionalNotes ? `Ek Notlar: ${additionalNotes}` : ''}
-
-Bu bilgilere göre profesyonel bir sosyal medya içeriği oluştur.
-      `.trim();
-
       const response = await fetch(`${API_URL}/api/content/simple-generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({
+          client_name: clientName,
+          platform,
+          content_type: contentType,
+          topic,
+          goal
+        })
       });
       
       const data = await response.json();
-      setResult(data.content || data.message || 'İçerik üretildi');
+      setResult(data.content || 'İçerik üretildi');
     } catch (error) {
       console.error('Error:', error);
-      setResult('Hata: İçerik üretilemedi. Lütfen tekrar deneyin.');
+      setResult('Hata: İçerik üretilemedi');
     } finally {
       setLoading(false);
     }
@@ -91,8 +61,14 @@ Bu bilgilere göre profesyonel bir sosyal medya içeriği oluştur.
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `content-${Date.now()}.txt`;
+    a.download = `${clientName}-${contentType}-${Date.now()}.txt`;
     a.click();
+  };
+
+  const getContentIcon = (type: string) => {
+    if (type === 'reel') return <Film className="h-4 w-4" />;
+    if (type === 'carousel') return <Image className="h-4 w-4" />;
+    return <FileText className="h-4 w-4" />;
   };
 
   return (
@@ -100,7 +76,9 @@ Bu bilgilere göre profesyonel bir sosyal medya içeriği oluştur.
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">✨ İçerik Üretimi</h1>
-        <p className="text-gray-600">AI ile müşterileriniz için profesyonel sosyal medya içerikleri oluşturun</p>
+        <p className="text-gray-600">
+          AI ile marka kimliğine uygun profesyonel içerik üretin
+        </p>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -109,33 +87,24 @@ Bu bilgilere göre profesyonel bir sosyal medya içeriği oluştur.
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Wand2 className="h-5 w-5 text-purple-600" />
+                <Sparkles className="h-5 w-5 text-purple-600" />
                 İçerik Parametreleri
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Müşteri Seçimi */}
+              {/* Müşteri Adı */}
               <div>
                 <label className="text-sm font-medium mb-2 block">
-                  Müşteri *
+                  Müşteri Adı *
                 </label>
-                <select
-                  className="w-full p-2 border rounded"
-                  value={selectedClient}
-                  onChange={(e) => setSelectedClient(e.target.value)}
-                >
-                  <option value="">Müşteri Seçin</option>
-                  {clients.map((client) => (
-                    <option key={client.id} value={client.id}>
-                      {client.name} - {client.industry}
-                    </option>
-                  ))}
-                </select>
-                {clients.length === 0 && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Henüz müşteri yok. "Müşteriler" sayfasından ekleyin.
-                  </p>
-                )}
+                <Input
+                  placeholder="Örn: Baklava Atölyesi, Dr. Murat Önal, Seluna"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  💡 Kayıtlı markalar için görsel kimlik otomatik uygulanır
+                </p>
               </div>
 
               {/* Platform & Content Type */}
@@ -151,9 +120,9 @@ Bu bilgilere göre profesyonel bir sosyal medya içeriği oluştur.
                   >
                     <option value="instagram">📸 Instagram</option>
                     <option value="tiktok">🎵 TikTok</option>
-                    <option value="twitter">🐦 Twitter (X)</option>
+                    <option value="twitter">🐦 Twitter</option>
                     <option value="linkedin">💼 LinkedIn</option>
-                    <option value="facebook">�� Facebook</option>
+                    <option value="facebook">👍 Facebook</option>
                   </select>
                 </div>
                 <div>
@@ -166,49 +135,73 @@ Bu bilgilere göre profesyonel bir sosyal medya içeriği oluştur.
                     onChange={(e) => setContentType(e.target.value)}
                   >
                     <option value="post">📝 Post</option>
-                    <option value="story">⚡ Story</option>
-                    <option value="reel">🎥 Reel/Video</option>
+                    <option value="reel">🎥 Reel (Detaylı Şablon)</option>
                     <option value="carousel">📸 Carousel</option>
+                    <option value="story">⚡ Story</option>
                   </select>
                 </div>
               </div>
 
-              {/* Amaç */}
+              {/* Topic */}
               <div>
                 <label className="text-sm font-medium mb-2 block">
-                  Amaç *
+                  Konu / Tema *
                 </label>
                 <Input
-                  placeholder="Örn: Yeni ürün lansmanı duyurusu, marka bilinirliği artırma"
-                  value={purpose}
-                  onChange={(e) => setPurpose(e.target.value)}
+                  placeholder="Örn: Ramazan kampanyası, yeni ürün lansmanı, bilinçlendirme"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
                 />
               </div>
 
-              {/* Ek Notlar */}
+              {/* Goal */}
               <div>
                 <label className="text-sm font-medium mb-2 block">
-                  Ek Notlar (Opsiyonel)
+                  Amaç / Hedef *
                 </label>
                 <Textarea
-                  placeholder="Ton, hedef kitle, özel istekler vb."
-                  value={additionalNotes}
-                  onChange={(e) => setAdditionalNotes(e.target.value)}
+                  placeholder="Örn: Yeni müşteri kazanımı, marka bilinirliği artırma, güven oluşturma"
+                  value={goal}
+                  onChange={(e) => setGoal(e.target.value)}
                   rows={3}
                 />
               </div>
 
+              {/* Content Type Info */}
+              {contentType === 'reel' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                  <p className="font-semibold text-blue-800 mb-1">
+                    🎥 Reel Formatı
+                  </p>
+                  <p className="text-blue-700 text-xs">
+                    Detaylı üretim şablonu: Hook, zamanlama, görsel tasarım brief, 
+                    script ve tasarımcı notları içerir.
+                  </p>
+                </div>
+              )}
+
+              {contentType === 'carousel' && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-sm">
+                  <p className="font-semibold text-purple-800 mb-1">
+                    📸 Carousel Formatı
+                  </p>
+                  <p className="text-purple-700 text-xs">
+                    5 slaytlık akış formatı: Her slayt için başlık, metin ve görsel brief.
+                  </p>
+                </div>
+              )}
+
               {/* Generate Button */}
               <Button 
                 onClick={handleGenerate} 
-                disabled={loading || !selectedClient || !purpose}
+                disabled={loading || !clientName || !topic || !goal}
                 className="w-full"
                 size="lg"
               >
                 {loading ? (
                   <>
                     <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                    İçerik Üretiliyor...
+                    Üretiliyor...
                   </>
                 ) : (
                   <>
@@ -225,7 +218,10 @@ Bu bilgilere göre profesyonel bir sosyal medya içeriği oluştur.
             <Card className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  <span>✨ Üretilen İçerik</span>
+                  <div className="flex items-center gap-2">
+                    {getContentIcon(contentType)}
+                    <span>Üretilen İçerik</span>
+                  </div>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={copyToClipboard}>
                       <Copy className="h-4 w-4 mr-1" />
@@ -240,12 +236,15 @@ Bu bilgilere göre profesyonel bir sosyal medya içeriği oluştur.
               </CardHeader>
               <CardContent>
                 <div className="bg-white rounded-lg p-4 space-y-3">
-                  <div className="flex gap-2">
-                    <Badge>{platform}</Badge>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge>{clientName}</Badge>
+                    <Badge variant="outline">{platform}</Badge>
                     <Badge variant="outline">{contentType}</Badge>
                   </div>
                   <div className="prose max-w-none">
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed">{result}</p>
+                    <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans">
+                      {result}
+                    </pre>
                   </div>
                 </div>
               </CardContent>
@@ -253,39 +252,50 @@ Bu bilgilere göre profesyonel bir sosyal medya içeriği oluştur.
           )}
         </div>
 
-        {/* Right Sidebar - Tips & Examples */}
+        {/* Right Sidebar */}
         <div className="space-y-6">
-          {/* Tips */}
-          <Card>
+          {/* Kayıtlı Markalar */}
+          <Card className="bg-gradient-to-br from-purple-50 to-pink-50">
             <CardHeader>
-              <CardTitle className="text-sm">💡 İpuçları</CardTitle>
+              <CardTitle className="text-sm">🎨 Kayıtlı Markalar</CardTitle>
             </CardHeader>
             <CardContent className="text-xs space-y-2">
-              <p>• Müşteri bilgilerini eksiksiz doldurun</p>
-              <p>• Amacı net ve detaylı belirtin</p>
-              <p>• Hedef kitlenizi açıkça tanımlayın</p>
-              <p>• Marka sesini ek notlara ekleyin</p>
+              <p className="font-semibold mb-2">Görsel kimlik otomatik uygulanır:</p>
+              {[
+                'Baklava Atölyesi',
+                'Dr. Murat Önal',
+                'Seluna',
+                'Kemerli Su Restaurant'
+              ].map((brand, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setClientName(brand)}
+                  className="w-full text-left p-2 rounded border bg-white hover:bg-gray-50 transition"
+                >
+                  {brand}
+                </button>
+              ))}
             </CardContent>
           </Card>
 
-          {/* Example Purposes */}
+          {/* Example Topics */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">🎯 Örnek Amaçlar</CardTitle>
+              <CardTitle className="text-sm">💡 Örnek Konular</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 {[
-                  "Yeni ürün lansmanı duyurusu",
-                  "Kampanya tanıtımı ve indirim paylaşımı",
-                  "Marka hikayesi anlatımı",
-                  "Müşteri testimonialleri paylaşımı",
-                  "Eğitici içerik ve ipuçları"
+                  'Ramazan özel kampanya',
+                  'Yeni menü tanıtımı',
+                  'Müşteri hikayesi',
+                  'Bilinçlendirme içeriği',
+                  'Marka değerleri paylaşımı'
                 ].map((ex, idx) => (
                   <button
                     key={idx}
-                    onClick={() => setPurpose(ex)}
-                    className="w-full text-left text-xs p-2 rounded border hover:bg-gray-50 transition"
+                    onClick={() => setTopic(ex)}
+                    className="w-full text-left text-xs p-2 rounded border hover:bg-gray-50"
                   >
                     {ex}
                   </button>
@@ -294,28 +304,16 @@ Bu bilgilere göre profesyonel bir sosyal medya içeriği oluştur.
             </CardContent>
           </Card>
 
-          {/* Platform Stats */}
-          <Card className="bg-gradient-to-br from-blue-50 to-purple-50">
+          {/* Tips */}
+          <Card>
             <CardHeader>
-              <CardTitle className="text-sm">📊 Platform İstatistikleri</CardTitle>
+              <CardTitle className="text-sm">📋 İpuçları</CardTitle>
             </CardHeader>
             <CardContent className="text-xs space-y-2">
-              <div className="flex justify-between">
-                <span>Instagram Post:</span>
-                <span className="font-semibold">2200 karakter</span>
-              </div>
-              <div className="flex justify-between">
-                <span>TikTok Caption:</span>
-                <span className="font-semibold">2200 karakter</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Twitter/X:</span>
-                <span className="font-semibold">280 karakter</span>
-              </div>
-              <div className="flex justify-between">
-                <span>LinkedIn:</span>
-                <span className="font-semibold">3000 karakter</span>
-              </div>
+              <p>• Reel formatı = Tam üretim şablonu</p>
+              <p>• Carousel = Slayt slayt içerik</p>
+              <p>• Kayıtlı markalar = Otomatik görsel brief</p>
+              <p>• Hedefi net belirtin</p>
             </CardContent>
           </Card>
         </div>
