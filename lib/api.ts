@@ -1,9 +1,24 @@
-// API Configuration
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-// Helper function for API calls
-export async function fetchAPI(endpoint: string, options?: RequestInit) {
-  const url = `${API_URL}${endpoint}`;
-  const response = await fetch(url, options);
-  return response;
-}
+export const getClients = async () => {
+  const res = await fetch(`${API_URL}/api/clients`);
+  return res.json();
+};
+
+export const createClient = async (client: any) => {
+  const res = await fetch(`${API_URL}/api/clients`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(client)
+  });
+  return res.json();
+};
+
+// Campaign functions (placeholder)
+export const getCampaigns = async () => {
+  return { campaigns: [] };
+};
+
+export const createCampaign = async (campaign: any) => {
+  return { success: true, campaign };
+};
