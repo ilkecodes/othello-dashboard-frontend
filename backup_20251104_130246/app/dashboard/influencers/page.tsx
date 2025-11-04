@@ -1,6 +1,5 @@
 'use client';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -68,8 +67,8 @@ export default function InfluencersPage() {
     
     try {
       const endpoint = searchMode === 'advanced' 
-        ? '${API_URL}/api/advanced-search/advanced-search'
-        : '${API_URL}/api/influencer-discovery/search';
+        ? 'http://localhost:8000/api/advanced-search/advanced-search'
+        : 'http://localhost:8000/api/influencer-discovery/search';
       
       const body = searchMode === 'advanced'
         ? {
@@ -100,7 +99,7 @@ export default function InfluencersPage() {
 
   const handleSave = async (inf: Influencer) => {
     try {
-      const res = await fetch('${API_URL}/api/influencer-stats/save', {
+      const res = await fetch('http://localhost:8000/api/influencer-stats/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
