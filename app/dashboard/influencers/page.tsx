@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Instagram, Loader2 } from 'lucide-react';
+import { Search, Instagram, Loader2, User } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -17,6 +17,7 @@ interface Influencer {
   engagement_rate: number;
   profile_pic: string;
   instagram_url: string;
+  location_data?: any;
 }
 
 export default function InfluencersPage() {
@@ -56,6 +57,12 @@ export default function InfluencersPage() {
     return num.toString();
   };
 
+  // CORS sorunu için placeholder kullan
+  const getProfileImage = (url: string, username: string) => {
+    // Instagram resmi yerine placeholder
+    return `https://ui-avatars.com/api/?name=${username}&size=150&background=random`;
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -79,7 +86,7 @@ export default function InfluencersPage() {
             </div>
             <div>
               <Input
-                placeholder="Konum (opsiyonel)"
+                placeholder="Konum (örn: İstanbul)"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
               />
@@ -124,13 +131,9 @@ export default function InfluencersPage() {
                 <Card key={idx} className="hover:shadow-lg transition">
                   <CardHeader className="pb-3">
                     <div className="flex items-start gap-3">
-                      {inf.profile_pic && (
-                        <img 
-                          src={inf.profile_pic} 
-                          alt={inf.username} 
-                          className="w-16 h-16 rounded-full"
-                        />
-                      )}
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white font-bold text-xl">
+                        {inf.username.charAt(0).toUpperCase()}
+                      </div>
                       <div className="flex-1 min-w-0">
                         <CardTitle className="text-sm truncate">
                           {inf.full_name || inf.username}
@@ -143,6 +146,12 @@ export default function InfluencersPage() {
                     <p className="text-xs text-gray-600 line-clamp-2">
                       {inf.biography}
                     </p>
+                    
+                    {inf.location_data?.city && (
+                      <Badge variant="outline" className="text-xs">
+                        📍 {inf.location_data.city}
+                      </Badge>
+                    )}
                     
                     <div className="grid grid-cols-2 gap-2 text-center text-xs">
                       <div>
